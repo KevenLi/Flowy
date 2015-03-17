@@ -1,0 +1,9 @@
+#!bin/bash
+
+cd /root/flowyagent-0.0.1/bin
+
+./agent.sh stop
+
+sleep 10s
+
+./agent.sh start

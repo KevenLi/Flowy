@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+
+<!--
+   Licensed to the Apache Software Foundation (ASF) under one or more
+   contributor license agreements.  See the NOTICE file distributed with
+   this work for additional information regarding copyright ownership.
+   The ASF licenses this file to You under the Apache License, Version 2.0
+   (the "License"); you may not use this file except in compliance with
+   the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+
+<project name="FlowyAgent" default="build-all" 
+xmlns:ivy="antlib:org.apache.ivy.ant"
+xmlns:artifact="antlib:org.apache.maven.artifact.ant"
+xmlns:maven="antlib:org.apache.maven.artifact.ant">
+	<property name="build.dir" value="${basedir}/build" />
+	<property name="build.classes" value="${build.dir}/classes"/>
+	<property name="version" value="0.0.1"/>
+	<property name="name" value="flowyagent" /> 
+	<property name="final.name" value="${name}-${version}"/>
+	<property name="dist.dir" value="${build.dir}/${final.name}"/>
+	<property name="java.src.dir" value="${basedir}/src" />
+	<property name="javac.target" value="1.7" />
+    <property name="javac.source" value="1.7" />
+	    <property name="lib.dir.includes" value="**/*.jar" />
+    <property name="lib.dir.excludes" value="**/excluded/" />
+	<property name="lib.dir" value="${basedir}/lib" />
+	    <!-- the normal classpath -->
+    <path id="java.classpath">
+      <pathelement location="${build.classes}"/>
+      <!-- allow the user to override (e.g. if there are local versions) -->
+      <fileset dir="${lib.dir}">
+        <include name="${lib.dir.includes}" />
+        <exclude name="${lib.dir.excludes}" />
+      </fileset>
+      <fileset dir="${ant.home}/lib">
+        <include name="ant.jar" />
+      </fileset>
+      <pathelement path="${clover.jar}" />
+    </path>    
+	<target name="init">    
+		<delete dir="${build.classes}" />
+        <mkdir dir="${build.classes}" />
+        <condition property="ivy.jar.exists">
+          <available file="${lib.dir}/ivy-${ivy.version}.jar"/>
+        </condition>
+
+        <tstamp>
+            <format property="build.time" pattern="MM/dd/yyyy HH:mm zz" timezone="GMT"/>
+            <format property="year" pattern="yyyy" timezone="GMT"/>
+        </tstamp>
+    </target>
+	<target name="compile" depends="init">
+        <javac srcdir="${java.src.dir}" destdir="${build.classes}" includeantruntime="false"
+               >
+            <classpath refid="java.classpath"/>
+            <compilerarg value="-Xlint:all"/>
+            <compilerarg value="-Xlint:-path"/>
+        </javac>
+    </target>
+	<target name="build-all" depends="init">
+		<javac srcdir="${java.src.dir}" destdir="${build.classes}" includeantruntime="false"
+               >
+            <classpath refid="java.classpath"/>
+            <compilerarg value="-Xlint:all"/>
+            <compilerarg value="-Xlint:-path"/>
+        </javac>
+		<javac srcdir="${basedir}/tests" destdir="${build.classes}" includeantruntime="false"
+               >
+            <classpath refid="java.classpath"/>
+            <compilerarg value="-Xlint:all"/>
+            <compilerarg value="-Xlint:-path"/>
+        </javac>
+	</target>
+	<target name="bin-jar" depends="compile">
+		<jar jarfile="${build.dir}/${final.name}.jar">
+            <fileset file="LICENSE.txt" />
+            <fileset dir="${build.classes}" excludes="**/.generated"/>
+            <manifest>
+                <attribute name="Main-Class" value="Agent" />
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Built-At" value="${build.time}"/>
+                <attribute name="Built-On" value="${host.name}" />
+                <attribute name="Implementation-Title" value="org.apache.zookeeper"/>
+                <attribute name="Implementation-Version" value="${revision}"/> 
+                <attribute name="Implementation-Vendor" value="The Apache Software Foundation"/>
+            	
+            	<!-- The following are OSGi manifest headers -->
+            	<!-- currently hardcoded, when things get more complicated we could use BND 
+            	http://www.aqute.biz/Code/Bnd to generate them -->
+                <attribute name="Bundle-Vendor" value="The Apache Software Foundation"/>
+                <attribute name="Bundle-Name" value="ZooKeeper Bundle"/>
+                <attribute name="Bundle-SymbolicName" value="org.apache.hadoop.zookeeper"/>
+                <attribute name="Bundle-ManifestVersion" value="2"/>
+                <attribute name="Bundle-Version" value="${version}"/>
+                <attribute name="Bundle-License" value="http://www.apache.org/licenses/LICENSE-2.0.txt"/>
+                <attribute name="Bundle-DocURL" value="http://hadoop.apache.org/zookeeper"/>
+                <attribute name="Import-Package" value='javax.management;resolution:=optional,javax.security.auth.callback,javax.security.auth.login,javax.security.sasl,org.slf4j;version="[1.6,2)",org.jboss.netty.buffer;resolution:=optional;version="[3.2,4)",org.jboss.netty.channel;resolution:=optional;version="[3.2,4)",org.jboss.netty.channel.group;resolution:=optional;version="[3.2,4)",org.jboss.netty.channel.socket.nio;resolution:=optional;version="[3.2,4)",org.osgi.framework;resolution:=optional;version="[1.5,2)",org.osgi.util.tracker;resolution:=optional;version="[1.4,2)"'/>
+                <attribute name="Export-Package" value='org.apache.zookeeper;version="${version}",org.apache.zookeeper.client;version="${version}",org.apache.zookeeper.data;version="${version}",org.apache.zookeeper.version;version="${version}",org.apache.zookeeper.server;version="${version}",org.apache.zookeeper.server.auth;version="${version}",org.apache.zookeeper.server.persistence;version="${version}",org.apache.zookeeper.server.quorum;version="${version}",org.apache.zookeeper.common;version="${version}"'/>
+            </manifest>
+        </jar>
+	</target>
+	<target name="bin-package"
+            depends="bin-jar"
+            description="Build binary distribution">
+      <delete dir="${dist.dir}"/>
+      <mkdir dir="${dist.dir}"/>
+      <mkdir dir="${dist.dir}/lib"/>
+      <mkdir dir="${dist.dir}/bin"/>
+      <copy file="${build.dir}/${final.name}.jar"
+            tofile="${dist.dir}/${final.name}.jar"/> 
+
+      <copy todir="${dist.dir}/bin">
+        <fileset dir="${basedir}/bin" includes="*.sh,*.cmd" excludes="**/*.class" />
+      </copy>
+
+      <copy todir="${dist.dir}/conf">
+        <fileset dir="${basedir}/conf" excludes="**/*.template"/>
+      </copy>
+	  <copy todir="${dist.dir}/lib">
+		<fileset dir="${basedir}/lib" />
+	  </copy>
+    </target>
+</project>
